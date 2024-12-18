@@ -24,6 +24,7 @@ export class KafkaService implements OnModuleInit {
   // Emit messages to Kafka topics
   async emit(topic: string, message: any) {
     try {
+      console.log("emit========>")
       return this.client.emit(topic, JSON.stringify(message));
     } catch (error) {
       console.error('Error emitting message:', error);
@@ -61,3 +62,5 @@ export class KafkaService implements OnModuleInit {
     }
   }
 }
+
+

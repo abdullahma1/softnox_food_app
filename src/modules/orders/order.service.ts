@@ -5,6 +5,7 @@ import { ClientKafka } from '@nestjs/microservices';
 import { Order } from './order.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { RestaurantService } from '../restaurants/restaurant.service';
+import { KafkaService } from 'src/kafka/kafka.services';
 
 @Injectable()
 export class OrderService {
@@ -12,6 +13,8 @@ export class OrderService {
     @InjectRepository(Order)
     private orderRepository: Repository<Order>,
     private restaurantService: RestaurantService,
+    private readonly kafkaService: KafkaService, // Inject KafkaService here
+
     @Inject('KAFKA_SERVICE') private kafkaClient: ClientKafka
   ) {}
 
@@ -25,6 +28,7 @@ export class OrderService {
     
     // Publish Kafka event
     this.kafkaClient.emit('order_created', JSON.stringify(savedOrder));
+    console.log("this is order ")
     
     return savedOrder;
   }

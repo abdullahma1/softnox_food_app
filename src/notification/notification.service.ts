@@ -32,6 +32,7 @@ export class NotificationService implements OnModuleInit {
     const subject = `Order #${orderId} Status Update`;
     const html = this.getOrderStatusEmailTemplate(orderId, status);
 
+    console.log("======>abc")
     try {
       await this.emailService.sendEmail(userEmail, subject, html);
       console.log(`Sent email notification for order ${orderId}: Status changed to ${status}`);

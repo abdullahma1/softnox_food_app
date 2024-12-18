@@ -26,7 +26,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     ]),
   ],
   providers: [KafkaService],
-  exports: [KafkaService],
+  exports: [KafkaService, ClientsModule], // Export both KafkaService and ClientsModule
 })
 export class KafkaModule {}
-
