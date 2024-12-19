@@ -15,16 +15,9 @@ export class AnalyticsService {
     private dishRepository: Repository<Dish>,
     @InjectRepository(Delivery)
     private deliveryRepository: Repository<Delivery>,
-    @Inject('KAFKA_SERVICE') private kafkaClient: ClientKafka
-  ) {
-    this.subscribeToOrderEvents();
-  }
 
-  private subscribeToOrderEvents() {
-    this.kafkaClient.subscribeToResponseOf('order_created');
-    this.kafkaClient.subscribeToResponseOf('order_updated');
-    this.kafkaClient.subscribeToResponseOf('order_deleted');
-  }
+  ) {}
+
 
   async getPopularDishes(restaurantId: number): Promise<Dish[]> {
     return await this.dishRepository.createQueryBuilder('dish')
@@ -34,7 +27,7 @@ export class AnalyticsService {
       .getMany();
   }
 
-  async getAverageDeliveryTimes(period: 'day' | 'week' | 'month'): Promise<number> {
+  async getAverageDeliveryTimes(period: 'day' | 'week' | 'month'): Promise<string> {
     const startDate = new Date();
     switch (period) {
       case 'day':
@@ -52,10 +45,10 @@ export class AnalyticsService {
       .where('delivery.deliveryTime >= :startDate', { startDate })
       .getMany();
 
-    if (deliveries.length === 0) return 0;
+    if (deliveries.length === 0) return null;
 
     const totalTime = deliveries.reduce((sum, delivery) => sum + delivery.estimatedDuration, 0);
-    return totalTime / deliveries.length;
+    return `${period} = ${totalTime / deliveries.length}`;
   }
 
   async trackPeakHours(order: Order) {
@@ -67,5 +60,48 @@ export class AnalyticsService {
     // Implement logic to adjust restaurant operation times based on analytics
     console.log(`Adjusting operation times for restaurant: ${restaurantId}`);
   }
+
+
+
+  async getIncompleteOrdersOlderThan(thresholdMinutes: number): Promise<Order[]> {
+    const thresholdDate = new Date();
+    thresholdDate.setMinutes(thresholdDate.getMinutes() - thresholdMinutes); // 30 minutes ago
+
+    return await this.orderRepository.createQueryBuilder('order')
+      .where('order.status != :status', { status: 'completed' })  // Adjust this condition based on your order status field
+      .andWhere('order.timestamp <= :thresholdDate', { thresholdDate })
+      .getMany();
+  }
+
+
+  async getPeakOrderingTimes(restaurantId: number, period: 'day' | 'week' | 'month'): Promise<any> {
+    const startDate = new Date();
+    switch (period) {
+      case 'day':
+        startDate.setDate(startDate.getDate() - 1);
+        break;
+      case 'week':
+        startDate.setDate(startDate.getDate() - 7);
+        break;
+      case 'month':
+        startDate.setMonth(startDate.getMonth() - 1);
+        break;
+    }
+
+    // Fetch orders placed during the specified period
+    const orders = await this.orderRepository.createQueryBuilder('order')
+      .where('order.restaurantId = :restaurantId', { restaurantId })
+      .andWhere('order.timestamp >= :startDate', { startDate })
+      .select("DATE_TRUNC('hour', order.timestamp)", 'hour')  // Group by hour (can adjust for day, week, etc.)
+      .addSelect('COUNT(order.id)', 'orderCount')
+      .groupBy('hour')
+      .orderBy('hour', 'ASC')
+      .getRawMany();
+
+    return orders;
+  }
+
+
 }
+
 

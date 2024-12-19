@@ -1,96 +1,68 @@
-import { Injectable, NotFoundException, Inject } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+// import { KafkaService } from '../../kafka/kafka.services';
+import { ProducerService } from './producer.services'
+import { Order } from './order.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ClientKafka } from '@nestjs/microservices';
-import { Order } from './order.entity';
-import { CreateOrderDto } from './dto/create-order.dto';
-import { RestaurantService } from '../restaurants/restaurant.service';
-import { KafkaService } from 'src/kafka/kafka.services';
 
 @Injectable()
 export class OrderService {
   constructor(
     @InjectRepository(Order)
-    private orderRepository: Repository<Order>,
-    private restaurantService: RestaurantService,
-    private readonly kafkaService: KafkaService, // Inject KafkaService here
-
-    @Inject('KAFKA_SERVICE') private kafkaClient: ClientKafka
+    private readonly orderRepository: Repository<Order>,
+    // private readonly kafkaService: KafkaService,
+    private readonly producerService: ProducerService
   ) {}
 
-  async create(createOrderDto: CreateOrderDto): Promise<Order> {
-    const restaurant = await this.restaurantService.findOne(createOrderDto.restaurantId);
-    const order = this.orderRepository.create({
-      ...createOrderDto,
-      restaurant,
-    });
+  async create(orderData: any): Promise<Order> {
+    const order = this.orderRepository.create(orderData);
     const savedOrder = await this.orderRepository.save(order);
-    
-    // Publish Kafka event
-    this.kafkaClient.emit('order_created', JSON.stringify(savedOrder));
-    console.log("this is order ")
-    
-    return savedOrder;
-  }
 
-  async findAll(): Promise<Order[]> {
-    return await this.orderRepository.find({ relations: ['restaurant', 'delivery'] });
-  }
-
-  async findOne(id: number): Promise<Order> {
-    const order = await this.orderRepository.findOne({ where: { id }, relations: ['restaurant', 'delivery'] });
-    if (!order) {
-      throw new NotFoundException(`Order with ID ${id} not found`);
-    }
-    return order;
+    console.log(order)
+    await this.producerService.produce({
+    topic:'test',
+      messages:[
+        {value:JSON.stringify(order)}
+      ]
+    });
+    return orderData;
   }
 
   async updateStatus(id: number, status: string): Promise<Order> {
     const order = await this.orderRepository.findOne({ where: { id } });
-    if (!order) {
-      throw new NotFoundException(`Order with ID ${id} not found`);
-    }
-
-    order.status = status; // Update the status
-    return this.orderRepository.save(order); // Save the changes
-  }
-
-  async update(id: number, updateOrderDto: Partial<CreateOrderDto>): Promise<Order> {
-    const order = await this.findOne(id);
-    if (updateOrderDto.restaurantId) {
-      order.restaurant = await this.restaurantService.findOne(updateOrderDto.restaurantId);
-    }
-    Object.assign(order, updateOrderDto);
+    order.status = status;
     const updatedOrder = await this.orderRepository.save(order);
-    
-    // Publish Kafka event
-    this.kafkaClient.emit('order_updated', JSON.stringify(updatedOrder));
-    
+    // await this.kafkaService.emit('order_status_changed', {
+    //   orderId: id,
+    //   newStatus: status,
+    //   restaurantId: order.restaurant.id
+    // });
     return updatedOrder;
   }
 
-  async remove(id: number): Promise<void> {
-    const result = await this.orderRepository.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException(`Order with ID ${id} not found`);
-    }
-    
-    // Publish Kafka event
-    this.kafkaClient.emit('order_deleted', JSON.stringify({ id }));
+
+  async update(id: number, orderData: any): Promise<Order> {
+    await this.orderRepository.update(id, orderData);
+    const updatedOrder = await this.orderRepository.findOne({ where: { id } });
+    // await this.kafkaService.emit('order_updated', {
+    //   id: updatedOrder.id,
+    //   restaurantId: updatedOrder.restaurant.id,
+    //   status: updatedOrder.status,
+    //   totalCost: updatedOrder.totalCost
+    // });
+    return updatedOrder;
   }
 
-  async findActiveOrders(): Promise<Order[]> {
-    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-    return await this.orderRepository.createQueryBuilder('order')
-      .leftJoinAndSelect('order.restaurant', 'restaurant')
-      .leftJoinAndSelect('order.delivery', 'delivery')
-      .where('order.status != :status', { status: 'completed' })
-      .andWhere('order.orderTime <= :time', { time: thirtyMinutesAgo })
-      .getMany();
+  async findAll(): Promise<Order[]> {
+    return this.orderRepository.find();
+  }
+
+  async findOne(id: number): Promise<Order> {
+    return this.orderRepository.findOne({ where: { id } });
+  }
+
+  async remove(id: number): Promise<void> {
+    await this.orderRepository.delete(id);
   }
 }
-
-
-
-
 

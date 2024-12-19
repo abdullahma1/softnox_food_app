@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { Restaurant } from '../restaurants/restaurant.entity';
 import { Delivery } from '../delivery/delivery.entity';
 
@@ -10,14 +10,24 @@ export class Order {
   @Column()
   userId: number;
 
+
   @Column('decimal', { precision: 10, scale: 2 })
   totalCost: number;
 
-  @Column()
+  @CreateDateColumn()
   orderTime: Date;
 
-  @Column()
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @Column({ 
+    type: 'varchar',
+    default: 'pending'
+  })
   status: string;
+
+  @Column({ nullable: true })
+  estimatedDeliveryTime: Date;
 
   @ManyToOne(() => Restaurant, restaurant => restaurant.orders)
   restaurant: Restaurant;

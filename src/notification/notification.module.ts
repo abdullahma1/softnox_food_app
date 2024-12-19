@@ -1,13 +1,15 @@
 import { Module } from '@nestjs/common';
-import { NotificationService } from './notification.service';
-import { EmailService } from './email.service';
-import { KafkaModule } from '../kafka/kafka.module';
+import { EmailService } from './email/email.services';
+
 import { ConfigModule } from '@nestjs/config';
+import { NotificaionCusomer } from './NotificaionCusomer.service';
+import { ConsumerService } from './consumer';
+// import { NotificaionCusomer } from './notificaionCusomer';
 
 @Module({
-  imports: [KafkaModule, ConfigModule],
-  providers: [NotificationService, EmailService],
-  exports: [NotificationService],
+  imports: [ ConfigModule],
+  providers: [NotificaionCusomer,EmailService,ConsumerService],
+  exports: [NotificaionCusomer],
 })
 export class NotificationsModule {}
 

@@ -13,9 +13,8 @@ import { Dish } from './modules/dish/dish.entity';
 import { Order } from './modules/orders/order.entity';
 import { Delivery } from './modules/delivery/delivery.entity';
 import { User } from './modules/users/user.entity';
-import { KafkaModule } from './kafka/kafka.module';
-import { AnalyticsGateway } from './analytics/analytics.gateway';
-import { AnalyticsService } from './analytics/analytics.service';
+import { KafkaModule } from './kafka/kafka.module';;
+import { NotificationsModule } from './notification/notification.module';
 
 
 @Module({
@@ -41,7 +40,9 @@ import { AnalyticsService } from './analytics/analytics.service';
     RestaurantModule,
     DishModule,
     OrderModule,
-    DeliveryModule
+    DeliveryModule,
+    NotificationsModule,
+
     
     
   ],
@@ -57,7 +58,7 @@ export class AppModule implements NestModule {
 
 
 
-
+ 
 
 
 
